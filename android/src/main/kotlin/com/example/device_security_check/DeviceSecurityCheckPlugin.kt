@@ -1,6 +1,7 @@
 package com.example.device_security_check
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.plugin.common.MethodChannel
 
 class DeviceSecurityCheckPlugin: FlutterPlugin {
     private lateinit var deviceSecurityPlugin: DeviceSecurityPlugin
