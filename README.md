@@ -150,7 +150,7 @@ The `DeviceSecurityCheckWidget` now supports custom widgets and full-page error 
 
 ```dart
 import 'package:flutter/material.dart';
-import 'package:device_security_check/src/presentation/device_security_check_widget.dart';
+import 'package:device_security_check/device_security_check.dart';
 
 class MyApp extends StatelessWidget {
   @override
