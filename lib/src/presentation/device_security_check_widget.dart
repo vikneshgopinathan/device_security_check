@@ -2,7 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:device_security_check/device_security_check.dart';
 
 class DeviceSecurityCheckWidget extends StatefulWidget {
-  const DeviceSecurityCheckWidget({Key? key}) : super(key: key);
+  /// Custom widget to display when device is compromised (if not provided, shows full page error)
+  final Widget? errorWidget;
+
+  /// Widget to display when device is secure
+  final Widget child;
+
+  /// Custom widget to display while loading
+  final Widget? loadingWidget;
+
+  /// Callback function when device security status changes
+  final Function(Map<String, dynamic>)? onStatusChanged;
+
+  const DeviceSecurityCheckWidget({
+    Key? key,
+    required this.child,
+    this.errorWidget,
+    this.loadingWidget,
+    this.onStatusChanged,
+  }) : super(key: key);
 
   @override
   State<DeviceSecurityCheckWidget> createState() =>
@@ -30,6 +48,11 @@ class _DeviceSecurityCheckWidgetState extends State<DeviceSecurityCheckWidget> {
         _statusType = status['type'] as String? ?? 'unknown';
         _isLoading = false;
       });
+
+      // Call the callback if provided
+      if (widget.onStatusChanged != null) {
+        widget.onStatusChanged!(status);
+      }
     } catch (e) {
       setState(() {
         _isSecure = false;
@@ -37,69 +60,101 @@ class _DeviceSecurityCheckWidgetState extends State<DeviceSecurityCheckWidget> {
         _statusType = 'error';
         _isLoading = false;
       });
+
+      // Call the callback with error status
+      if (widget.onStatusChanged != null) {
+        widget.onStatusChanged!({
+          'compromised': true,
+          'type': 'error',
+          'message': 'Error checking device security: $e'
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    if (_isLoading) {
+      return _buildLoadingWidget();
+    } else if (!_isSecure) {
+      // Device is compromised
+      if (widget.errorWidget != null) {
+        return widget.errorWidget!;
+      } else {
+        // Show full page error by default
+        return _buildFullPageError();
+      }
+    } else {
+      // Device is secure - show the child widget
+      return widget.child;
+    }
+  }
+
+  Widget _buildLoadingWidget() {
+    if (widget.loadingWidget != null) {
+      return widget.loadingWidget!;
+    }
+    return Scaffold(
+      body: Center(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              'Device Security Status',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const CircularProgressIndicator(),
             const SizedBox(height: 16),
-            if (_isLoading)
-              const Center(child: CircularProgressIndicator())
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        _isSecure ? Icons.security : Icons.warning,
-                        color: _isSecure ? Colors.green : Colors.red,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _isSecure
-                            ? 'Device is Secure'
-                            : 'Device is Compromised',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: _isSecure ? Colors.green : Colors.red,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Status: $_statusType',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _statusMessage,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _checkDeviceSecurity,
-                    child: const Text('Refresh Status'),
-                  ),
-                ],
-              ),
+            const Text('Checking device security...'),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFullPageError() {
+    return Scaffold(
+      backgroundColor: Colors.red[50],
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.security,
+                size: 80,
+                color: Colors.red,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Security Alert',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _statusMessage,
+                style: const TextStyle(fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Threat Type: ${_statusType.toUpperCase()}',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'This app cannot run on compromised devices for security reasons.',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: _checkDeviceSecurity,
+                child: const Text('Retry Security Check'),
+              ),
+            ],
+          ),
         ),
       ),
     );

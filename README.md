@@ -144,28 +144,91 @@ class MyApp extends StatelessWidget {
 
 Use this approach when you want to show security information on specific pages or allow users to continue with warnings. This is ideal for apps that want to inform users about security risks but don't block functionality.
 
-#### Using the Pre-built Widget:
+#### Using the Enhanced Widget:
+
+The `DeviceSecurityCheckWidget` now supports custom widgets and full-page error display:
 
 ```dart
 import 'package:flutter/material.dart';
-import 'package:device_security_check/src/presentation/device_security_check_widget.dart';
+import 'package:device_security_check/device_security_check.dart';
 
-class SecurityPage extends StatelessWidget {
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: DeviceSecurityCheckWidget(
+        // Required: Widget to show when device is secure
+        child: MyHomePage(),
+        
+        // Optional: Custom error widget (if not provided, shows full page error)
+        errorWidget: CustomErrorWidget(),
+        
+        // Optional: Custom loading widget
+        loadingWidget: CustomLoadingWidget(),
+        
+        // Optional: Callback when security status changes
+        onStatusChanged: (status) {
+          print('Security status: ${status['type']}');
+        },
+      ),
+    );
+  }
+}
+
+class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Device Security')),
-      body: Padding(
-        padding: EdgeInsets.all(16),
+      appBar: AppBar(title: Text('My Secure App')),
+      body: Center(
+        child: Text('Welcome to the secure app!'),
+      ),
+    );
+  }
+}
+
+class CustomErrorWidget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.red[50],
+      body: Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Icon(Icons.warning, size: 80, color: Colors.red),
+            SizedBox(height: 20),
             Text(
-              'Device Security Status',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              'Custom Security Alert',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 16),
-            // Pre-built widget that handles all security checking and UI
-            DeviceSecurityCheckWidget(),
+            Text('This is a custom error widget'),
+            SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () {
+                // Handle retry or contact support
+              },
+              child: Text('Contact Support'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CustomLoadingWidget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Performing security check...'),
           ],
         ),
       ),
@@ -173,6 +236,24 @@ class SecurityPage extends StatelessWidget {
   }
 }
 ```
+
+#### Widget Behavior:
+
+- **Loading State**: Shows loading widget (default or custom) while checking device security
+- **Secure Device**: Shows the `child` widget (your app content)
+- **Compromised Device**: 
+  - If `errorWidget` is provided: Shows your custom error widget
+  - If `errorWidget` is null: Shows a full-page security alert with retry button
+- **Status Callback**: The `onStatusChanged` callback receives the security status map for custom handling
+
+#### Widget Properties:
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `child` | `Widget` | ✅ | Widget to display when device is secure |
+| `errorWidget` | `Widget?` | ❌ | Custom widget for compromised devices (shows full page error if null) |
+| `loadingWidget` | `Widget?` | ❌ | Custom loading widget (shows default if null) |
+| `onStatusChanged` | `Function(Map<String, dynamic>)?` | ❌ | Callback when security status changes |
 
 #### Custom Implementation:
 
@@ -279,6 +360,241 @@ The `getDeviceSecurityStatus()` method returns a map with the following structur
 - **`jailbreak`**: Device is rooted or jailbroken
 - **`developer_mode`**: Developer options are enabled
 - **`error`**: Unable to determine status
+
+### Customizing Warning Pages Based on Security Type
+
+You can customize your security warning page based on the specific threat detected using `securityStatus['type']`:
+
+```dart
+class SecurityBlockedApp extends StatelessWidget {
+  final Map<String, dynamic> securityStatus;
+  
+  const SecurityBlockedApp({Key? key, required this.securityStatus}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    String threatType = securityStatus['type'] ?? 'unknown';
+    
+    return MaterialApp(
+      home: Scaffold(
+        backgroundColor: _getBackgroundColor(threatType),
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(_getThreatIcon(threatType), size: 80, color: _getThreatColor(threatType)),
+                SizedBox(height: 20),
+                Text(
+                  _getThreatTitle(threatType),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _getThreatColor(threatType)),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  securityStatus['message'] ?? 'Device security compromised',
+                  style: TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Threat Type: ${threatType.toUpperCase()}',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+                SizedBox(height: 24),
+                Text(
+                  _getThreatDescription(threatType),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getBackgroundColor(String threatType) {
+    switch (threatType) {
+      case 'jailbreak':
+        return Colors.red[50]!;
+      case 'developer_mode':
+        return Colors.orange[50]!;
+      case 'error':
+        return Colors.grey[50]!;
+      default:
+        return Colors.red[50]!;
+    }
+  }
+
+  IconData _getThreatIcon(String threatType) {
+    switch (threatType) {
+      case 'jailbreak':
+        return Icons.security;
+      case 'developer_mode':
+        return Icons.developer_mode;
+      case 'error':
+        return Icons.error;
+      default:
+        return Icons.warning;
+    }
+  }
+
+  Color _getThreatColor(String threatType) {
+    switch (threatType) {
+      case 'jailbreak':
+        return Colors.red;
+      case 'developer_mode':
+        return Colors.orange;
+      case 'error':
+        return Colors.grey;
+      default:
+        return Colors.red;
+    }
+  }
+
+  String _getThreatTitle(String threatType) {
+    switch (threatType) {
+      case 'jailbreak':
+        return 'Device Compromised';
+      case 'developer_mode':
+        return 'Developer Mode Detected';
+      case 'error':
+        return 'Security Check Failed';
+      default:
+        return 'Security Alert';
+    }
+  }
+
+  String _getThreatDescription(String threatType) {
+    switch (threatType) {
+      case 'jailbreak':
+        return 'This device appears to be rooted or jailbroken. For security reasons, this app cannot run on modified devices.';
+      case 'developer_mode':
+        return 'Developer options are enabled on this device. This may indicate a development or testing environment.';
+      case 'error':
+        return 'Unable to determine device security status. Please ensure your device is running a supported operating system.';
+      default:
+        return 'This app cannot run on compromised devices for security reasons.';
+    }
+  }
+}
+```
+
+### Advanced Customization Examples
+
+#### Different Actions Based on Threat Type
+
+```dart
+Widget _buildActionButtons(String threatType) {
+  switch (threatType) {
+    case 'jailbreak':
+      return Column(
+        children: [
+          ElevatedButton(
+            onPressed: () => _showJailbreakInfo(),
+            child: Text('Learn More About Jailbreak Risks'),
+          ),
+          SizedBox(height: 8),
+          TextButton(
+            onPressed: () => _contactSupport(),
+            child: Text('Contact Support'),
+          ),
+        ],
+      );
+    case 'developer_mode':
+      return Column(
+        children: [
+          ElevatedButton(
+            onPressed: () => _showDeveloperModeInfo(),
+            child: Text('How to Disable Developer Mode'),
+          ),
+          SizedBox(height: 8),
+          TextButton(
+            onPressed: () => _continueWithWarning(),
+            child: Text('Continue with Warning'),
+          ),
+        ],
+      );
+    case 'error':
+      return Column(
+        children: [
+          ElevatedButton(
+            onPressed: () => _retrySecurityCheck(),
+            child: Text('Retry Security Check'),
+          ),
+          SizedBox(height: 8),
+          TextButton(
+            onPressed: () => _contactSupport(),
+            child: Text('Contact Support'),
+          ),
+        ],
+      );
+    default:
+      return ElevatedButton(
+        onPressed: () => _contactSupport(),
+        child: Text('Contact Support'),
+      );
+  }
+}
+```
+
+#### Conditional UI Based on Threat Severity
+
+```dart
+bool _isHighSeverityThreat(String threatType) {
+  return threatType == 'jailbreak';
+}
+
+bool _isMediumSeverityThreat(String threatType) {
+  return threatType == 'developer_mode';
+}
+
+bool _isLowSeverityThreat(String threatType) {
+  return threatType == 'error';
+}
+
+Widget _buildSeverityIndicator(String threatType) {
+  if (_isHighSeverityThreat(threatType)) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.red,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        'HIGH RISK',
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
+    );
+  } else if (_isMediumSeverityThreat(threatType)) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.orange,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        'MEDIUM RISK',
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
+    );
+  } else {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.grey,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        'UNKNOWN',
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+```
 
 ## Platform Setup
 

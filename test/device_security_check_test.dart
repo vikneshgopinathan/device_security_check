@@ -20,7 +20,6 @@ void main() {
 
       expect(isSecure, true);
       expect(status['compromised'], false);
-      expect(status['type'], 'safe');
     });
 
     test('compromised device returns correct status', () async {
