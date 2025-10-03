@@ -1,6 +1,6 @@
 # Device Security Check
 
-A Flutter plugin that provides device security checking capabilities for both iOS and Android devices. This plugin can detect if a device is rooted/jailbroken, has developer mode enabled, or is otherwise compromised.
+A Flutter plugin that provides comprehensive device security checking capabilities for both iOS and Android devices. This plugin can detect if a device is rooted/jailbroken, has developer mode enabled, or is otherwise compromised.
 
 ## Features
 
@@ -53,28 +53,212 @@ flutter pub get
 
 ## Usage
 
-### Basic Usage
+This plugin offers two main usage patterns depending on your security requirements:
+
+### 1. App-Level Security Blocking
+
+Use this approach when you want to block the entire app from running on compromised devices. This is ideal for banking, payment, or other security-sensitive applications.
+
+#### Implementation in main.dart:
 
 ```dart
+import 'package:flutter/material.dart';
 import 'package:device_security_check/device_security_check.dart';
 
-// Check if device is secure
-bool isSecure = await DeviceSecurityCheck.isDeviceSecure();
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Check device security before running the app
+  bool isDeviceSecure = await DeviceSecurityCheck.isDeviceSecure();
+  
+  if (!isDeviceSecure) {
+    // Get detailed security information
+    Map<String, dynamic> securityStatus = await DeviceSecurityCheck.getDeviceSecurityStatus();
+    
+    runApp(SecurityBlockedApp(securityStatus: securityStatus));
+  } else {
+    runApp(MyApp());
+  }
+}
 
-// Get detailed security status
-Map<String, dynamic> status = await DeviceSecurityCheck.getDeviceSecurityStatus();
-print('Compromised: ${status['compromised']}');
-print('Type: ${status['type']}');
-print('Message: ${status['message']}');
+class SecurityBlockedApp extends StatelessWidget {
+  final Map<String, dynamic> securityStatus;
+  
+  const SecurityBlockedApp({Key? key, required this.securityStatus}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.red[50],
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.security, size: 80, color: Colors.red),
+                SizedBox(height: 20),
+                Text(
+                  'Security Alert',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.red),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  securityStatus['message'] ?? 'Device security compromised',
+                  style: TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Type: ${securityStatus['type']}',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+                SizedBox(height: 24),
+                Text(
+                  'This app cannot run on compromised devices for security reasons.',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'My Secure App',
+      home: HomePage(),
+    );
+  }
+}
 ```
 
-### Using the Widget
+### 2. Widget-Level Security Checking
+
+Use this approach when you want to show security information on specific pages or allow users to continue with warnings. This is ideal for apps that want to inform users about security risks but don't block functionality.
+
+#### Using the Pre-built Widget:
 
 ```dart
+import 'package:flutter/material.dart';
 import 'package:device_security_check/src/presentation/device_security_check_widget.dart';
 
-// Add to your widget tree
-DeviceSecurityCheckWidget()
+class SecurityPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Device Security')),
+      body: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text(
+              'Device Security Status',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 16),
+            // Pre-built widget that handles all security checking and UI
+            DeviceSecurityCheckWidget(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+```
+
+#### Custom Implementation:
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:device_security_check/device_security_check.dart';
+
+class CustomSecurityWidget extends StatefulWidget {
+  @override
+  _CustomSecurityWidgetState createState() => _CustomSecurityWidgetState();
+}
+
+class _CustomSecurityWidgetState extends State<CustomSecurityWidget> {
+  bool _isLoading = true;
+  bool _isSecure = false;
+  String _statusMessage = '';
+  String _statusType = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkDeviceSecurity();
+  }
+
+  Future<void> _checkDeviceSecurity() async {
+    try {
+      final status = await DeviceSecurityCheck.getDeviceSecurityStatus();
+      setState(() {
+        _isSecure = !(status['compromised'] as bool? ?? false);
+        _statusMessage = status['message'] as String? ?? 'Unknown status';
+        _statusType = status['type'] as String? ?? 'unknown';
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isSecure = false;
+        _statusMessage = 'Error checking device security: $e';
+        _statusType = 'error';
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Icon(
+                  _isSecure ? Icons.security : Icons.warning,
+                  color: _isSecure ? Colors.green : Colors.orange,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  _isSecure ? 'Device is Secure' : 'Security Warning',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: _isSecure ? Colors.green : Colors.orange,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Text('Status: $_statusType'),
+            SizedBox(height: 4),
+            Text(_statusMessage),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _checkDeviceSecurity,
+              child: Text('Refresh Status'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 ```
 
 ### Security Status Response
@@ -84,8 +268,8 @@ The `getDeviceSecurityStatus()` method returns a map with the following structur
 ```dart
 {
   'compromised': bool,    // true if device is compromised
-  'type': String,         // 'safe', 'jailbreak', 'developer_mode', or 'error'
-  'message': String       // Human-readable description
+  'type': String,          // 'safe', 'jailbreak', 'developer_mode', or 'error'
+  'message': String        // Human-readable description
 }
 ```
 
@@ -138,28 +322,7 @@ This plugin is designed for both iOS and Android devices and provides comprehens
 - Validates system file integrity
 - Detects developer mode settings
 
-## Publishing to pub.dev
 
-This package is ready to be published to [pub.dev](https://pub.dev). Before publishing:
-
-1. **Update the repository URLs** in `pubspec.yaml`:
-   - Replace `your-username` with your actual GitHub username
-   - Update the repository URL to point to your actual repository
-
-2. **Run tests** to ensure everything works:
-   ```bash
-   flutter test
-   ```
-
-3. **Check for issues**:
-   ```bash
-   flutter analyze
-   ```
-
-4. **Publish to pub.dev**:
-   ```bash
-   flutter pub publish
-   ```
 
 ## Contributing
 
