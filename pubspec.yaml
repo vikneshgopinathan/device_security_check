@@ -1,6 +1,6 @@
 name: device_security_check
 description: A Flutter plugin for device security checking. Detect rooted/jailbroken devices and developer mode on iOS and Android.
-version: 0.1.0
+version: 0.1.1
 homepage: https://github.com/vikneshgopinathan/device_security_check
 repository: https://github.com/vikneshgopinathan/device_security_check
 issue_tracker: https://github.com/vikneshgopinathan/device_security_check/issues
